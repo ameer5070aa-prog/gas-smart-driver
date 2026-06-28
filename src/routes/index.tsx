@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -49,6 +49,50 @@ function Index() {
   const [driveMin, setDriveMin] = useState("");
   const [waitMin, setWaitMin] = useState("");
 
+  // Shift log
+  type ShiftEntry = {
+    id: number;
+    payout: number;
+    miles: number;
+    gasCost: number;
+    net: number;
+    minutes: number;
+    at: number;
+  };
+  const [shiftStart, setShiftStart] = useState<number | null>(null);
+  const [shiftEnd, setShiftEnd] = useState<number | null>(null);
+  const [entries, setEntries] = useState<ShiftEntry[]>([]);
+  const [now, setNow] = useState(Date.now());
+
+  useEffect(() => {
+    if (!shiftStart || shiftEnd) return;
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [shiftStart, shiftEnd]);
+
+  const shiftMs = shiftStart ? (shiftEnd ?? now) - shiftStart : 0;
+  const fmtDur = (ms: number) => {
+    const s = Math.max(0, Math.floor(ms / 1000));
+    const h = Math.floor(s / 3600);
+    const m = Math.floor((s % 3600) / 60);
+    const sec = s % 60;
+    return `${h}:${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
+  };
+
+  const shiftTotals = useMemo(() => {
+    const t = entries.reduce(
+      (a, e) => ({
+        payout: a.payout + e.payout,
+        miles: a.miles + e.miles,
+        gas: a.gas + e.gasCost,
+        net: a.net + e.net,
+      }),
+      { payout: 0, miles: 0, gas: 0, net: 0 },
+    );
+    const hours = shiftMs / 3_600_000;
+    return { ...t, hours, pph: hours > 0 ? t.net / hours : 0 };
+  }, [entries, shiftMs]);
+
   const r = useMemo(() => {
     const p = parseFloat(payout) || 0;
     const m = parseFloat(miles) || 0;
@@ -70,6 +114,23 @@ function Index() {
       net > 0 && ppm >= 0.5 && (pph === null || pph >= 20);
     return { gallons, gasCost, net, ppm, pph, totalMin, worth };
   }, [payout, miles, mpg, gasPrice, wear, driveMin, waitMin]);
+
+  const logOrder = () => {
+    if (!r) return;
+    setEntries((prev) => [
+      {
+        id: Date.now(),
+        payout: parseFloat(payout) || 0,
+        miles: parseFloat(miles) || 0,
+        gasCost: r.gasCost,
+        net: r.net,
+        minutes: r.totalMin,
+        at: Date.now(),
+      },
+      ...prev,
+    ]);
+    setPayout(""); setMiles(""); setWear(""); setDriveMin(""); setWaitMin("");
+  };
 
   const onVehicle = (v: string) => {
     setVehicleIdx(v);
@@ -257,6 +318,99 @@ function Index() {
         <p className="mt-4 text-center text-xs text-muted-foreground">
           "Worth it" = net profit positive, ≥ $0.50/mile, and ≥ $20/hr when time is entered.
         </p>
+
+        {/* Shift log */}
+        <Card className="mt-5 border-border bg-card p-5">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Shift
+              </div>
+              <div className="mt-1 text-3xl font-bold tabular-nums">
+                {shiftStart ? fmtDur(shiftMs) : "0:00:00"}
+              </div>
+              <div className="text-xs text-muted-foreground">
+                {shiftStart
+                  ? shiftEnd
+                    ? "Shift ended"
+                    : "Recording…"
+                  : "Not started"}
+              </div>
+            </div>
+            <div className="flex flex-col gap-2">
+              {!shiftStart || shiftEnd ? (
+                <Button
+                  className="h-12 px-5"
+                  onClick={() => {
+                    setShiftStart(Date.now());
+                    setShiftEnd(null);
+                    setEntries([]);
+                  }}
+                >
+                  Start shift
+                </Button>
+              ) : (
+                <Button
+                  variant="destructive"
+                  className="h-12 px-5"
+                  onClick={() => setShiftEnd(Date.now())}
+                >
+                  End shift
+                </Button>
+              )}
+              {shiftStart && !shiftEnd && (
+                <Button
+                  variant="secondary"
+                  className="h-10 px-5"
+                  disabled={!r}
+                  onClick={logOrder}
+                >
+                  Log this order
+                </Button>
+              )}
+            </div>
+          </div>
+
+          {entries.length > 0 && (
+            <>
+              <div className="my-4 h-px bg-border" />
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                <Stat label="Orders" value={String(entries.length)} />
+                <Stat label="Net" value={`$${shiftTotals.net.toFixed(2)}`} />
+                <Stat label="Miles" value={shiftTotals.miles.toFixed(1)} />
+                <Stat label="$/hour" value={`$${shiftTotals.pph.toFixed(2)}`} />
+              </div>
+              <div className="my-4 h-px bg-border" />
+              <ul className="space-y-2">
+                {entries.map((e) => (
+                  <li
+                    key={e.id}
+                    className="flex items-center justify-between rounded-md bg-secondary px-3 py-2 text-sm"
+                  >
+                    <span className="tabular-nums">
+                      ${e.payout.toFixed(2)} · {e.miles.toFixed(1)} mi
+                      {e.minutes > 0 ? ` · ${e.minutes}m` : ""}
+                    </span>
+                    <span className="flex items-center gap-3">
+                      <span className="font-semibold tabular-nums">
+                        ${e.net.toFixed(2)}
+                      </span>
+                      <button
+                        onClick={() =>
+                          setEntries((prev) => prev.filter((x) => x.id !== e.id))
+                        }
+                        className="text-xs text-muted-foreground hover:text-foreground"
+                        aria-label="Remove entry"
+                      >
+                        ✕
+                      </button>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+        </Card>
       </div>
     </div>
   );
