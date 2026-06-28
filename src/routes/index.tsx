@@ -115,108 +115,133 @@ function Index() {
         </Card>
 
         {/* Inputs */}
-        <Card className="space-y-4 border-border bg-card p-5">
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Payout ($)">
+        <Card className="space-y-0 border-border bg-card p-5">
+          {/* Order */}
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Payout ($)">
+                <Input
+                  inputMode="decimal"
+                  placeholder="0.00"
+                  value={payout}
+                  onChange={(e) => setPayout(e.target.value)}
+                  className="h-12 text-lg"
+                />
+              </Field>
+              <Field label="Miles">
+                <Input
+                  inputMode="decimal"
+                  placeholder="0"
+                  value={miles}
+                  onChange={(e) => setMiles(e.target.value)}
+                  className="h-12 text-lg"
+                />
+              </Field>
+            </div>
+          </div>
+
+          <div className="my-4 h-px bg-border" />
+
+          {/* Vehicle */}
+          <div className="space-y-4">
+            <Field label="Vehicle">
+              <Select value={vehicleIdx} onValueChange={onVehicle}>
+                <SelectTrigger className="h-12"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {VEHICLES.map((v, i) => (
+                    <SelectItem key={v.name} value={String(i)}>{v.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
+
+            <Field label="MPG">
+              <Input
+                inputMode="decimal"
+                value={mpg}
+                onChange={(e) => setMpg(e.target.value)}
+                className="h-12 text-lg"
+              />
+              <a
+                href="https://www.calculator.net/gas-mileage-calculator.html"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-1 inline-block text-xs text-accent underline underline-offset-2 hover:opacity-80"
+              >
+                Note: Find out your MPG Here
+              </a>
+            </Field>
+          </div>
+
+          <div className="my-4 h-px bg-border" />
+
+          {/* Time */}
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Drive time (min)">
+                <Input
+                  inputMode="decimal"
+                  placeholder="0"
+                  value={driveMin}
+                  onChange={(e) => setDriveMin(e.target.value)}
+                  className="h-12 text-lg"
+                />
+              </Field>
+              <Field label="Pickup wait (min, optional)">
+                <Input
+                  inputMode="decimal"
+                  placeholder="0"
+                  value={waitMin}
+                  onChange={(e) => setWaitMin(e.target.value)}
+                  className="h-12 text-lg"
+                />
+              </Field>
+            </div>
+          </div>
+
+          <div className="my-4 h-px bg-border" />
+
+          {/* Fuel */}
+          <div className="space-y-4">
+            <Field label="Area (Virginia)">
+              <Select value={areaIdx} onValueChange={onArea}>
+                <SelectTrigger className="h-12"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {VA_AREAS.map((a, i) => (
+                    <SelectItem key={a.name} value={String(i)}>
+                      {a.name} — ${a.price.toFixed(2)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
+
+            <Field label="Gas price ($/gal)">
+              <Input
+                inputMode="decimal"
+                value={gasPrice}
+                onChange={(e) => setGasPrice(e.target.value)}
+                className="h-12 text-lg"
+              />
+            </Field>
+          </div>
+
+          <div className="my-4 h-px bg-border" />
+
+          {/* Costs */}
+          <div className="space-y-4">
+            <Field label="Wear & tear ($, optional)">
               <Input
                 inputMode="decimal"
                 placeholder="0.00"
-                value={payout}
-                onChange={(e) => setPayout(e.target.value)}
-                className="h-12 text-lg"
-              />
-            </Field>
-            <Field label="Miles">
-              <Input
-                inputMode="decimal"
-                placeholder="0"
-                value={miles}
-                onChange={(e) => setMiles(e.target.value)}
+                value={wear}
+                onChange={(e) => setWear(e.target.value)}
                 className="h-12 text-lg"
               />
             </Field>
           </div>
 
-          <Field label="Vehicle">
-            <Select value={vehicleIdx} onValueChange={onVehicle}>
-              <SelectTrigger className="h-12"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {VEHICLES.map((v, i) => (
-                  <SelectItem key={v.name} value={String(i)}>{v.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </Field>
-
-          <Field label="MPG">
-            <Input
-              inputMode="decimal"
-              value={mpg}
-              onChange={(e) => setMpg(e.target.value)}
-              className="h-12 text-lg"
-            />
-            <a
-              href="https://www.calculator.net/gas-mileage-calculator.html"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-1 inline-block text-xs text-accent underline underline-offset-2 hover:opacity-80"
-            >
-              Note: Find out your MPG Here
-            </a>
-          </Field>
-
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Drive time (min)">
-              <Input
-                inputMode="decimal"
-                placeholder="0"
-                value={driveMin}
-                onChange={(e) => setDriveMin(e.target.value)}
-                className="h-12 text-lg"
-              />
-            </Field>
-            <Field label="Pickup wait (min, optional)">
-              <Input
-                inputMode="decimal"
-                placeholder="0"
-                value={waitMin}
-                onChange={(e) => setWaitMin(e.target.value)}
-                className="h-12 text-lg"
-              />
-            </Field>
-          </div>
-
-          <Field label="Area (Virginia)">
-            <Select value={areaIdx} onValueChange={onArea}>
-              <SelectTrigger className="h-12"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {VA_AREAS.map((a, i) => (
-                  <SelectItem key={a.name} value={String(i)}>
-                    {a.name} — ${a.price.toFixed(2)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </Field>
-
-          <Field label="Gas price ($/gal)">
-            <Input
-              inputMode="decimal"
-              value={gasPrice}
-              onChange={(e) => setGasPrice(e.target.value)}
-              className="h-12 text-lg"
-            />
-          </Field>
-
-          <Field label="Wear & tear ($, optional)">
-            <Input
-              inputMode="decimal"
-              placeholder="0.00"
-              value={wear}
-              onChange={(e) => setWear(e.target.value)}
-              className="h-12 text-lg"
-            />
-          </Field>
+          <div className="my-4 h-px bg-border" />
 
           <Button
             variant="secondary"
