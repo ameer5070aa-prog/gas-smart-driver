@@ -46,6 +46,8 @@ function Index() {
   const [areaIdx, setAreaIdx] = useState("0");
   const [gasPrice, setGasPrice] = useState(String(VA_AREAS[0].price));
   const [wear, setWear] = useState("");
+  const [driveMin, setDriveMin] = useState("");
+  const [waitMin, setWaitMin] = useState("");
 
   const r = useMemo(() => {
     const p = parseFloat(payout) || 0;
@@ -53,13 +55,21 @@ function Index() {
     const mp = parseFloat(mpg) || 0;
     const gp = parseFloat(gasPrice) || 0;
     const w = parseFloat(wear) || 0;
+    const dm = parseFloat(driveMin) || 0;
+    const wm = parseFloat(waitMin) || 0;
     if (!m || !mp) return null;
     const gallons = m / mp;
     const gasCost = gallons * gp;
     const net = p - gasCost - w;
     const ppm = net / m;
-    return { gallons, gasCost, net, ppm, worth: net > 0 && ppm >= 0.5 };
-  }, [payout, miles, mpg, gasPrice, wear]);
+    const totalMin = dm + wm;
+    const hours = totalMin / 60;
+    const pph = hours > 0 ? net / hours : null;
+    // Worth it: positive net, >= $0.50/mile, and (if time entered) >= $20/hr
+    const worth =
+      net > 0 && ppm >= 0.5 && (pph === null || pph >= 20);
+    return { gallons, gasCost, net, ppm, pph, totalMin, worth };
+  }, [payout, miles, mpg, gasPrice, wear, driveMin, waitMin]);
 
   const onVehicle = (v: string) => {
     setVehicleIdx(v);
@@ -81,24 +91,26 @@ function Index() {
         </header>
 
         {/* Result dashboard */}
-        <Card className="mb-5 border-border bg-card p-5">
-          <div className="flex items-baseline justify-between">
-            <span className="text-xs uppercase tracking-wider text-muted-foreground">Net Profit</span>
-            <span
-              className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                r?.worth ? "bg-primary text-primary-foreground" : "bg-destructive text-destructive-foreground"
-              }`}
-            >
-              {r ? (r.worth ? "WORTH IT" : "SKIP") : "—"}
-            </span>
+        <Card
+          className={`mb-5 border-transparent p-5 transition-colors ${
+            r
+              ? r.worth
+                ? "bg-primary text-primary-foreground"
+                : "bg-destructive text-destructive-foreground"
+              : "border-border bg-card"
+          }`}
+        >
+          <div className="text-xs font-semibold uppercase tracking-wider opacity-80">
+            {r ? (r.worth ? "Worth it — Net Profit" : "Skip — Net Profit") : "Net Profit"}
           </div>
           <div className="mt-1 text-5xl font-bold tabular-nums">
             {r ? `$${r.net.toFixed(2)}` : "$0.00"}
           </div>
-          <div className="mt-4 grid grid-cols-3 gap-3 text-center">
-            <Stat label="$/mile" value={r ? `$${r.ppm.toFixed(2)}` : "—"} />
-            <Stat label="Gas cost" value={r ? `$${r.gasCost.toFixed(2)}` : "—"} />
-            <Stat label="Gallons" value={r ? r.gallons.toFixed(2) : "—"} />
+          <div className="mt-4 grid grid-cols-2 gap-3 text-center sm:grid-cols-4">
+            <Stat label="$/mile" value={r ? `$${r.ppm.toFixed(2)}` : "—"} tinted={!!r} />
+            <Stat label="$/hour" value={r && r.pph !== null ? `$${r.pph.toFixed(2)}` : "—"} tinted={!!r} />
+            <Stat label="Gas cost" value={r ? `$${r.gasCost.toFixed(2)}` : "—"} tinted={!!r} />
+            <Stat label="Total time" value={r && r.totalMin > 0 ? `${r.totalMin} min` : "—"} tinted={!!r} />
           </div>
         </Card>
 
@@ -143,7 +155,36 @@ function Index() {
               onChange={(e) => setMpg(e.target.value)}
               className="h-12 text-lg"
             />
+            <a
+              href="https://www.calculator.net/gas-mileage-calculator.html"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-1 inline-block text-xs text-accent underline underline-offset-2 hover:opacity-80"
+            >
+              Note: Find out your MPG Here
+            </a>
           </Field>
+
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Drive time (min)">
+              <Input
+                inputMode="decimal"
+                placeholder="0"
+                value={driveMin}
+                onChange={(e) => setDriveMin(e.target.value)}
+                className="h-12 text-lg"
+              />
+            </Field>
+            <Field label="Pickup wait (min, optional)">
+              <Input
+                inputMode="decimal"
+                placeholder="0"
+                value={waitMin}
+                onChange={(e) => setWaitMin(e.target.value)}
+                className="h-12 text-lg"
+              />
+            </Field>
+          </div>
 
           <Field label="Area (Virginia)">
             <Select value={areaIdx} onValueChange={onArea}>
@@ -181,7 +222,7 @@ function Index() {
             variant="secondary"
             className="h-12 w-full text-base"
             onClick={() => {
-              setPayout(""); setMiles(""); setWear("");
+              setPayout(""); setMiles(""); setWear(""); setDriveMin(""); setWaitMin("");
             }}
           >
             Clear order
@@ -189,7 +230,7 @@ function Index() {
         </Card>
 
         <p className="mt-4 text-center text-xs text-muted-foreground">
-          "Worth it" = net profit positive and ≥ $0.50/mile. Adjust as you like.
+          "Worth it" = net profit positive, ≥ $0.50/mile, and ≥ $20/hr when time is entered.
         </p>
       </div>
     </div>
@@ -205,10 +246,12 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
+function Stat({ label, value, tinted }: { label: string; value: string; tinted?: boolean }) {
   return (
-    <div className="rounded-md bg-secondary p-2">
-      <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</div>
+    <div className={`rounded-md p-2 ${tinted ? "bg-black/15" : "bg-secondary"}`}>
+      <div className={`text-[10px] uppercase tracking-wider ${tinted ? "opacity-80" : "text-muted-foreground"}`}>
+        {label}
+      </div>
       <div className="text-base font-semibold tabular-nums">{value}</div>
     </div>
   );
